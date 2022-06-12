@@ -8,7 +8,7 @@ contract Vault {
     mapping(address => bool) public admins;
     uint256 public adminCount = 1;
     uint256 public sellPrice = 1;
-    uint256 public buyPrice = 1;
+    uint256 public buyPrice = 2;
 
     constructor() {
         admins[msg.sender] = true;
