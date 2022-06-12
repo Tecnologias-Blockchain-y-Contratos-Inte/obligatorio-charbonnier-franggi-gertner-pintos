@@ -4,8 +4,8 @@
   "description": "[![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-c66648af7eb3fe8bc4f294546bfd86ef473780cde1dea487d3c4ff354943c9ae.svg)](https://classroom.github.com/online_ide?assignment_repo_id=7872870&assignment_repo_type=AssignmentRepo)",
   "main": "index.js",
   "scripts": {
-    "deploy-hardhat": "npx hardhat run scripts/sample-script.js",
-    "deploy-ganache": "npx hardhat run scripts/sample-script.js --network ganache"
+    "deploy-hardhat": "npx hardhat run scripts/deployVault.js",
+    "deploy-ganache": "npx hardhat run scripts/deployVault.js --network ganache"
   },
   "repository": {
     "type": "git",
@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/Tecnologias-Blockchain-y-Contratos-Inte/obligatorio-charbonnier-franggi-gertner-pintos#readme",
   "dependencies": {
+    "@nomiclabs/hardhat-waffle": "^2.0.3",
     "dotenv": "^16.0.1",
     "ethers": "^5.6.8",
     "hardhat": "^2.9.7",
