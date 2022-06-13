@@ -10,3 +10,5 @@ artifacts
 
 #VSCode files
 .vscode
+
+package-lock.json
