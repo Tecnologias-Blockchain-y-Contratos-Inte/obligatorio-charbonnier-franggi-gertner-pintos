@@ -7,8 +7,8 @@ contract Vault {
     uint256 public constant VERSION = 100;
     mapping(address => bool) public admins;
     uint256 public adminCount = 1;
-    uint256 public sellPrice = 1;
-    uint256 public buyPrice = 2;
+    uint256 public sellPrice = 2;
+    uint256 public buyPrice = 1;
 
     constructor() {
         admins[msg.sender] = true;
@@ -51,8 +51,8 @@ contract Vault {
         numberValid(_price)
     {
         require(
-            _price < buyPrice,
-            "The sell price must be less than the buy price."
+            _price > buyPrice,
+            "The sell price must be greater than the buy price."
         );
         sellPrice = _price;
     }
@@ -63,8 +63,8 @@ contract Vault {
         numberValid(_price)
     {
         require(
-            _price > sellPrice,
-            "The buy price must be greater than the sell price."
+            _price < sellPrice,
+            "The buy price must be less than the sell price."
         );
         buyPrice = _price;
     }
