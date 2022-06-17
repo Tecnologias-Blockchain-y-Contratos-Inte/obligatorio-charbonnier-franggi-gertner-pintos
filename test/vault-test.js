@@ -8,7 +8,7 @@ const [wallet, walletTo, thirdWallet] = provider.getWallets();
 
 describe("Vault", () => {
   beforeEach(async () => {
-    vault = await deployContract(wallet, Vault, []);
+    vault = await deployContract(wallet, Vault, [2, 2, 1, 50]);
   });
 
   describe("Constructor", () => {
@@ -112,5 +112,9 @@ describe("Vault", () => {
       // Assert
       await expect(vault.setSellPrice(sellPrice)).to.be.reverted;
     });
+  });
+
+  describe("Withdraw, Request Withdraw", () => {
+    
   });
 });
