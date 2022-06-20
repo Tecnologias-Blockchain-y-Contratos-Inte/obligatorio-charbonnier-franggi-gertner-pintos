@@ -52,7 +52,13 @@ describe("Vault", () => {
     });
 
     it("should not be able to remove last admin", async () => {
+      // Assert
       await expect(vault.removeAdmin(wallet.address)).to.be.reverted;
+    });
+
+    it("should not be able to remove an address that is not an admin", async () => {
+      // Assert
+      await expect(vault.removeAdmin(walletTo.address)).to.be.reverted;
     });
   });
 
