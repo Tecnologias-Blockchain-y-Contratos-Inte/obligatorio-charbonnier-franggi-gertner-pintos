@@ -24,6 +24,12 @@ contract Vault {
         _;
     }
 
+    modifier numberValid(uint256 _number) {
+        require(_number > 0, "The number must be greater than 0.");
+        require(_number < 2**256 - 1, "The number must be less than 2**256 - 1.");
+        _;
+    }
+
     function addAdmin(address _newAdmin) external onlyAdmin returns (bool) {
         admins[_newAdmin] = true;
         adminCount++;
@@ -37,36 +43,13 @@ contract Vault {
         return true;
     }
 
-    modifier numberValid(uint256 _number) {
-        require(_number > 0, "The number must be greater than 0.");
-        require(
-            _number < 2**256 - 1,
-            "The number must be less than 2**256 - 1."
-        );
-        _;
-    }
-
-    function setSellPrice(uint256 _price)
-        external
-        onlyAdmin
-        numberValid(_price)
-    {
-        require(
-            _price > buyPrice,
-            "The sell price must be greater than the buy price."
-        );
+    function setSellPrice(uint256 _price) external onlyAdmin numberValid(_price) {
+        require(_price > buyPrice, "The sell price must be greater than the buy price.");
         sellPrice = _price;
     }
 
-    function setBuyPrice(uint256 _price)
-        external
-        onlyAdmin
-        numberValid(_price)
-    {
-        require(
-            _price < sellPrice,
-            "The buy price must be less than the sell price."
-        );
+    function setBuyPrice(uint256 _price) external onlyAdmin numberValid(_price) {
+        require(_price < sellPrice, "The buy price must be less than the sell price.");
         buyPrice = _price;
     }
 }
