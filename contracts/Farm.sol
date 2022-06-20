@@ -42,7 +42,7 @@ contract Farm {
         if (balances[msg.sender].stake > 0 && balances[msg.sender].APR > 0 && balances[msg.sender].timestamp > 0) {
             oldStake = balances[msg.sender].stake;
             uint256 income = (balances[msg.sender].stake + _amount) * balances[msg.sender].APR * 100; // Yield for an year without actual yield
-            newStake = _getNewStakeForTimestamp(newTimestamp, _amount, INCREASE);
+            newStake = getNewStakeForTimestamp(newTimestamp, _amount, INCREASE);
             newAPR = income * 100 / newStake;
 
             return true;
@@ -61,7 +61,7 @@ contract Farm {
         require(balances[msg.sender].stake > 0 && balances[msg.sender].APR > 0 && balances[msg.sender].timestamp > 0, "You don't have any tokens to unstake");
         
         uint256 newTimestamp = block.timestamp;
-        uint256 newStake = _getNewStakeForTimestamp(newTimestamp, _amount, DECREASE);
+        uint256 newStake = getNewStakeForTimestamp(newTimestamp, _amount, DECREASE);
         
         require(newStake >= 0, "You don't have enough tokens to unstake");
 
@@ -85,7 +85,7 @@ contract Farm {
     // TODO: test functionality when token contract ready.
     function withdrawYield() external returns (bool) {
         uint256 newTimestamp = block.timestamp;
-        uint256 yield = _getYieldForTimestamp(newTimestamp);
+        uint256 yield = getYieldForTimestamp(newTimestamp);
         
         // TODO: create yield (mint)
         bytes memory transfer = abi.encodeWithSignature("transfer(address, uint256)", msg.sender, yield);
@@ -100,21 +100,21 @@ contract Farm {
     }
 
     function getYield() public view returns (uint256) {
-        return _getYieldForTimestamp(block.timestamp);
+        return getYieldForTimestamp(block.timestamp);
     }
 
     function getStake() external view returns (uint256) {
         return balances[msg.sender].stake;
     }
 
-    function _getYieldForTimestamp(uint256 _timestamp) private view returns (uint256) {
+    function getYieldForTimestamp(uint256 _timestamp) private view returns (uint256) {
         uint256 timeDiff = _timestamp - balances[msg.sender].timestamp / 60 / 60 / 24 / 36524 * 100; // time in years
         uint256 yield = balances[msg.sender].stake * balances[msg.sender].APR * timeDiff / 100;
         return yield;
     }
 
-    function _getNewStakeForTimestamp(uint256 _timestamp, uint256 _amount, uint256 _variation) private view returns (uint256) {
-        uint256 yield = _getYieldForTimestamp(_timestamp);
+    function getNewStakeForTimestamp(uint256 _timestamp, uint256 _amount, uint256 _variation) private view returns (uint256) {
+        uint256 yield = getYieldForTimestamp(_timestamp);
         if (_variation == INCREASE) {
             return balances[msg.sender].stake + yield + _amount;
         } else if (_variation == INCREASE) {
