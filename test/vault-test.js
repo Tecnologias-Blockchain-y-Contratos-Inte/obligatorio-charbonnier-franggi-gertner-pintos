@@ -121,6 +121,7 @@ describe("Vault", () => {
       await expect(vault.setSellPrice(sellPrice)).to.be.reverted;
     });
   });
+
   describe("Withdraw, Request Withdraw", () => {
     it("Should not be able to set max porcentage over 50 as admin", async () => {
       // Arrange
@@ -140,26 +141,16 @@ describe("Vault", () => {
       // Arrange
       await vault.addAdmin(walletTo.address);
       await vault.addAdmin(thirdWallet.address);
-
       await vault.setMaxPercentage(50);
       const testValue = 1;
-     
+
       // Transfer Ethers to Vault.
       const result = await wallet.sendTransaction({
         to: vault.address,
         value: ethers.utils.parseEther("100")
       });
-  
-      /*
-      // console.log({ result })
-      console.log(await vault.maxPercentageToWithdraw());
-      console.log(((await vault.maxPercentageToWithdraw()) / 100));
-      console.log(await waffle.provider.getBalance(vault.address));
-      console.log(((await vault.maxPercentageToWithdraw() / 100) * (await waffle.provider.getBalance(vault.address))));
-      console.log(1 < ((await vault.maxPercentageToWithdraw() / 100) * (await waffle.provider.getBalance(vault.address))));
-     */
 
-      // Arrange
+      // Act
       await vault.requestWithdraw(testValue); // first admin request
       const secondAdmin = vault.connect(walletTo);
       await secondAdmin.requestWithdraw(testValue);
@@ -167,6 +158,8 @@ describe("Vault", () => {
       // Assert
       await expect(vault.requestWithdraw(testValue)).to.be.reverted;
     });
+
+
 
 
   })
