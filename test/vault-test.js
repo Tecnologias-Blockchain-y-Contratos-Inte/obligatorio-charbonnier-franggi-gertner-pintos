@@ -2,6 +2,7 @@ const { expect, use } = require("chai");
 const { waffle } = require("hardhat");
 const { deployContract, provider, solidity } = waffle;
 const Vault = require("../artifacts/contracts/Vault.sol/Vault.json");
+const ethers = require('ethers');
 
 let vault;
 const [wallet, walletTo, thirdWallet] = provider.getWallets();
@@ -9,6 +10,7 @@ const [wallet, walletTo, thirdWallet] = provider.getWallets();
 describe("Vault", () => {
   beforeEach(async () => {
     vault = await deployContract(wallet, Vault, [2, 2, 1, 50]);
+    vault.balance = 9999;
   });
 
   describe("Constructor", () => {
@@ -119,8 +121,53 @@ describe("Vault", () => {
       await expect(vault.setSellPrice(sellPrice)).to.be.reverted;
     });
   });
-
   describe("Withdraw, Request Withdraw", () => {
-    
-  });
+    it("Should not be able to set max porcentage over 50 as admin", async () => {
+      // Arrange
+      const testPorcentage = 51;
+      // Assert
+      await expect(vault.setMaxPercentage(testPorcentage)).to.be.reverted;
+    });
+
+    it("Should not be able to set max porcentage under 0 as admin", async () => {
+      // Arrange
+      const testPorcentage = -1;
+      // Assert
+      await expect(vault.setMaxPercentage(testPorcentage)).to.be.reverted;
+    });
+
+    it("Should not be able to request withdraw as admin when you have made a previous request", async () => {
+      // Arrange
+      await vault.addAdmin(walletTo.address);
+      await vault.addAdmin(thirdWallet.address);
+
+      await vault.setMaxPercentage(50);
+      const testValue = 1;
+     
+      // Transfer Ethers to Vault.
+      const result = await wallet.sendTransaction({
+        to: vault.address,
+        value: ethers.utils.parseEther("100")
+      });
+  
+      /*
+      // console.log({ result })
+      console.log(await vault.maxPercentageToWithdraw());
+      console.log(((await vault.maxPercentageToWithdraw()) / 100));
+      console.log(await waffle.provider.getBalance(vault.address));
+      console.log(((await vault.maxPercentageToWithdraw() / 100) * (await waffle.provider.getBalance(vault.address))));
+      console.log(1 < ((await vault.maxPercentageToWithdraw() / 100) * (await waffle.provider.getBalance(vault.address))));
+     */
+
+      // Arrange
+      await vault.requestWithdraw(testValue); // first admin request
+      const secondAdmin = vault.connect(walletTo);
+      await secondAdmin.requestWithdraw(testValue);
+
+      // Assert
+      await expect(vault.requestWithdraw(testValue)).to.be.reverted;
+    });
+
+
+  })
 });

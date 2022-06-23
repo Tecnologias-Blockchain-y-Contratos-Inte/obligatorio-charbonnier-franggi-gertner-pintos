@@ -20,11 +20,11 @@ contract Vault {
 
     mapping(uint256 => mapping(uint256 => WithdrawRequest)) private withdrawRequests; // amount => (withdrawNumber => WithdrawRequest)
     mapping(address => uint256) private adminsThatHaveWithdrawn;
-    uint256 private adminsThatHaveWithdrawnCount = 0; // number of admins that have withdrawn
+    uint256 private adminsThatHaveWithdrawnCount = 1; // number of admins that have withdrawn
     uint256 private ethersToBeWithdrawn = 0; // amount of ethers to be withdrawn by all admins in total
     uint256 private activeWithdraw = 1; // active withdraw number
     
-    uint256 private maxPercentageToWithdraw; // max percentage of ethers to be requested in a withdraw request
+    uint256 public maxPercentageToWithdraw; // max percentage of ethers to be requested in a withdraw request
 
     constructor(uint256 _adminsNeededForMultiSignature, uint256 _sellPrice, uint256 _buyPrice, uint256 _maxPercentageToWithdraw) {
         admins[msg.sender] = true;
@@ -47,10 +47,10 @@ contract Vault {
     function addAdmin(address _newAdmin) external onlyAdmin returns (bool) {
         admins[_newAdmin] = true;
         // if there is an active withdraw, then we need to update the admins that have withdrawn
-        if (adminsThatHaveWithdrawnCount != adminsCount) {
+        // if (adminsThatHaveWithdrawnCount != adminsCount) {
             adminsThatHaveWithdrawn[_newAdmin] = activeWithdraw;
             adminsThatHaveWithdrawnCount++;
-        }
+        //  }
         adminsCount++;
         return true;
     }
@@ -87,7 +87,7 @@ contract Vault {
         buyPrice = _price;
     }
 
-    function setMaxPercentage(uint8 _maxPercentage) external onlyAdmin {
+    function setMaxPercentage(uint256 _maxPercentage) external onlyAdmin {
         require(_maxPercentage > 0, "The maximum percentage must be greater than 0.");
         require(_maxPercentage <= 50, "The maximum percentage must be less or equal than 50.");
         maxPercentageToWithdraw = _maxPercentage;
@@ -95,7 +95,7 @@ contract Vault {
 
     function requestWithdraw(uint256 _amount) external onlyAdmin {
         require(adminsThatHaveWithdrawnCount == adminsCount, "You can't start two simultaneous withdraw operations.");
-        require(_amount < ((maxPercentageToWithdraw / 100) * address(this).balance), "You can't exceed the maximum to withdraw.");
+        require(_amount < ((maxPercentageToWithdraw  * address(this).balance) / 100), "You can't exceed the maximum to withdraw.");
         require(!withdrawRequests[_amount][activeWithdraw].hasRequested[msg.sender], "You have already requested this withdraw.");
 
         withdrawRequests[_amount][activeWithdraw].hasRequested[msg.sender] = true;
@@ -117,4 +117,7 @@ contract Vault {
         ethersToBeWithdrawn -= ethersToBeWithdrawn / (adminsCount - adminsThatHaveWithdrawnCount);
         adminsThatHaveWithdrawn[msg.sender] = activeWithdraw;
     }
+
+
+    receive() external payable {}
 }
