@@ -8,7 +8,8 @@ contract Farm {
     uint256 private constant INCREASE = 1;
     uint256 private constant DECREASE = 2;
 
-    address public tokenContract;
+    address private tokenContract;
+    address private vault;
 
     mapping(address => FarmData) private balances;
 
@@ -22,8 +23,9 @@ contract Farm {
         uint256 timestamp;
     }
 
-    constructor(address _tokenContract) {
+    constructor(address _tokenContract, address _vault) {
         tokenContract = _tokenContract;
+        vault = _vault;
     }
 
     // TODO: test functionality when token contract ready.
@@ -33,11 +35,10 @@ contract Farm {
         uint256 newAPR = APR;
         uint256 newTimestamp = block.timestamp;
 
-        // TODO: add permissions in TokenContract for Farm to do this.
         bytes memory transferFrom = abi.encodeWithSignature("transferFrom(address, address, uint256)", msg.sender, address(this), _amount);
         (bool _success, ) = tokenContract.call(transferFrom);
         
-        require(_success, "You don't have enough tokens to stake");
+        require(_success, "Farm doesn't have permissions to transfer that tokens, or you don't have enough tokens to stake");
 
         if (balances[msg.sender].stake > 0 && balances[msg.sender].APR > 0 && balances[msg.sender].timestamp > 0) {
             oldStake = balances[msg.sender].stake;
@@ -87,9 +88,9 @@ contract Farm {
         uint256 newTimestamp = block.timestamp;
         uint256 yield = getYieldForTimestamp(newTimestamp);
         
-        // TODO: create yield (mint)
-        bytes memory transfer = abi.encodeWithSignature("transfer(address, uint256)", msg.sender, yield);
-        (bool _success, ) = tokenContract.call(transfer);
+        // TODO: add withdrawYield method in vault (tries a transfer, if no tokens does a mint and a transfer)
+        bytes memory withdrawYieldVault = abi.encodeWithSignature("withdrawYield(address, uint256)", msg.sender, yield);
+        (bool _success, ) = vault.call(withdrawYieldVault);
         
         require(_success, "Something went wrong while withdrawing yield");
 
