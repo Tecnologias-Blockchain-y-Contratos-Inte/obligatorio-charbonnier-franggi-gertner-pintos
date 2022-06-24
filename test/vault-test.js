@@ -1,7 +1,9 @@
 const { expect, use } = require("chai");
+const { deployMockContract } = require("ethereum-waffle");
 const { waffle } = require("hardhat");
 const { deployContract, provider, solidity } = waffle;
 const Vault = require("../artifacts/contracts/Vault.sol/Vault.json");
+const TokenContract = require("../artifacts/contracts/TokenContract.sol/TokenContract.json");
 
 let vault;
 const [wallet, walletTo, thirdWallet] = provider.getWallets();
@@ -117,6 +119,20 @@ describe("Vault", () => {
       await vault.setBuyPrice(buyPrice);
       // Assert
       await expect(vault.setSellPrice(sellPrice)).to.be.reverted;
+    });
+  });
+
+  describe("Mint", () => {
+    it("should be able to vote to mint as admin", async () => {
+      const amount = 20;
+
+      await vault.mint(amount);
+      const mintingNumber = await vault.mintingNumber();
+      const mintingVotes = await vault.mintingVotes(amount, mintingNumber);
+console.log('mv', mintingVotes.count);
+      expect(
+        mintingVotes.accounts[wallet.address]
+      ).to.equal(true);
     });
   });
 });
