@@ -4,6 +4,7 @@ const { waffle } = require("hardhat");
 const { deployContract, provider, solidity } = waffle;
 const Vault = require("../artifacts/contracts/Vault.sol/Vault.json");
 const TokenContract = require("../artifacts/contracts/TokenContract.sol/TokenContract.json");
+const { ethers } = require("ethers");
 
 let vault;
 const [wallet, walletTo, thirdWallet] = provider.getWallets();
@@ -125,14 +126,32 @@ describe("Vault", () => {
   describe("Mint", () => {
     it("should be able to vote to mint as admin", async () => {
       const amount = 20;
-
       await vault.mint(amount);
-      const mintingNumber = await vault.mintingNumber();
-      const mintingVotes = await vault.mintingVotes(amount, mintingNumber);
-console.log('mv', mintingVotes.count);
-      expect(
-        mintingVotes.accounts[wallet.address]
-      ).to.equal(true);
+      expect(await vault.getVote(amount)).to.equal(true);
+    });
+
+    it("should not be able to vote", async () => {
+      const amount = 20;
+      const vaultFromAnotherAccount = vault.connect(walletTo);
+      await expect(vaultFromAnotherAccount.mint(amount)).to.be.reverted;
+    });
+
+    it("should be able to mint", async () => {
+      const amount = 20;
+      const mintingNumber = ethers
+        .BigNumber.from(await vault.mintingNumber())
+        .toNumber();
+      await vault.mint(amount);
+      await vault.addAdmin(walletTo.address);
+      const tokenContract = await deployMockContract(wallet, TokenContract.abi);
+      await tokenContract.mock.mint.withArgs(amount).returns(true);
+      const vaultFromAnotherAccount = vault.connect(walletTo);
+      await vaultFromAnotherAccount.mint(amount);
+      const newMintingNumber = ethers
+        .BigNumber.from(await vault.mintingNumber())
+        .toNumber();
+
+      expect(newMintingNumber).to.equal(mintingNumber + 1);
     });
   });
 });

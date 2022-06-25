@@ -11,7 +11,7 @@ contract Vault {
     uint256 public mintingNumber = 1;
     address public tokenContract;
     mapping(address => bool) public admins;
-    mapping(uint256 => mapping(uint256 => Votes)) public mintingVotes;
+    mapping(uint256 => mapping(uint256 => Votes)) private mintingVotes;
 
     struct Votes {
         uint256 count;
@@ -84,17 +84,30 @@ contract Vault {
     }
 
     function mint(uint256 _amount) external onlyAdmin {
-        if (!mintingVotes[_amount][mintingNumber].accounts[msg.sender]) {
-            mintingVotes[_amount][mintingNumber].accounts[msg.sender] = true;
-            mintingVotes[_amount][mintingNumber].count++;
+        if (mintingVotes[mintingNumber][_amount].count == 0) {
+            Votes storage newVote = mintingVotes[mintingNumber][_amount];
+            newVote.accounts[msg.sender] = true;
+            newVote.count = 1;
+        } else if (!mintingVotes[mintingNumber][_amount].accounts[msg.sender]) {
+            mintingVotes[mintingNumber][_amount].accounts[msg.sender] = true;
+            mintingVotes[mintingNumber][_amount].count += 1;
 
-            if (mintingVotes[_amount][mintingNumber].count == 2) {
+            if (mintingVotes[mintingNumber][_amount].count == 2) {
                 mintingNumber++;
-                bytes memory mintCall = abi.encodeWithSignature("mint(uint256)", _amount);
-                (bool _success, bytes memory _returnData) = tokenContract.call(mintCall);
+                bytes memory mintCall = abi.encodeWithSignature(
+                    "mint(uint256)",
+                    _amount
+                );
+                (bool _success, bytes memory _returnData) = tokenContract.call(
+                    mintCall
+                );
                 require(_success, "TokenContract::mint call has failed.");
             }
         }
+    }
+
+    function getVote(uint256 _amount) external view returns (bool) {
+        return mintingVotes[mintingNumber][_amount].accounts[msg.sender];
     }
 
     function setTokenContract(address _address) external onlyAdmin {
