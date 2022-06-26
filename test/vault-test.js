@@ -137,18 +137,26 @@ describe("Vault", () => {
       await expect(vault.setMaxPercentage(testPorcentage)).to.be.reverted;
     });
 
+    it("Shouldnt allow to excede the max request porcentage", async () => {
+      // Arrange
+      await vault.setMaxPercentage(20);
+      const result = await wallet.sendTransaction({
+        to: vault.address,
+        value: ethers.utils.parseEther("0.0000000000000001")
+      });
+      // Note: after this operation the vault balance will be "100".  Consider for next operations. Use console.log(await waffle.provider.getBalance(vault.address));
+      const testValue = 10000;
+      // Assert
+      await expect(vault.requestWithdraw(testValue)).to.be.reverted;
+    });
+
     it("Should not be able to request withdraw as admin when you have made a previous request", async () => {
       // Arrange
       await vault.addAdmin(walletTo.address);
       await vault.addAdmin(thirdWallet.address);
       await vault.setMaxPercentage(50);
       const testValue = 1;
-
-      // Transfer Ethers to Vault.
-      const result = await wallet.sendTransaction({
-        to: vault.address,
-        value: ethers.utils.parseEther("100")
-      });
+      await transferTestEthersToVault(100);
 
       // Act
       await vault.requestWithdraw(testValue); // first admin request
@@ -160,7 +168,65 @@ describe("Vault", () => {
     });
 
 
+    it("Should not be able to request withdraw as admin when you have made a previous request", async () => {
+      // Arrange
+      await vault.addAdmin(walletTo.address);
+      await vault.addAdmin(thirdWallet.address);
+      await vault.setMaxPercentage(50);
+      const testValue1 = 1;
+      await transferTestEthersToVault(100);
+      // Act
+      await vault.requestWithdraw(testValue1);
+      // Assert
+      await expect(vault.requestWithdraw(testValue1)).to.be.reverted;
+    });
+
+    it("Should not be able to withdraw as admin when there wasnt a previous request", async () => {
+      await expect(vault.withdraw()).to.be.reverted;
+    });
+
+    it("Should be able to withdraw when a previous request was approved", async () => {
+      // Arrange
+
+      await vault.addAdmin(walletTo.address);
+      await vault.addAdmin(thirdWallet.address);
+      const testValue = 25;
+      await transferTestEthersToVault(100);
+
+      await vault.requestWithdraw(testValue);
+      const secondAdmin = vault.connect(walletTo);
+      await secondAdmin.requestWithdraw(testValue);
+
+      const oldBalance = await waffle.provider.getBalance(wallet.address);
+      const oldBalance2 = await waffle.provider.getBalance(walletTo.address);
+
+      // Act
+      await vault.withdraw();
+      await secondAdmin.withdraw();
+
+      const newBalance = await waffle.provider.getBalance(wallet.address);
+      const newBalance2 = await waffle.provider.getBalance(walletTo.address);
+
+      console.log("BALANCE VIEJO ADMIN 1: " + oldBalance);
+      console.log("BALANCE NUEVO ADMIN 1: " + newBalance);
+
+      console.log("BALANCE NUEVO SECOND ADMIN: " + oldBalance2);
+      console.log("BALANCE NUEVO SECOND ADMIN: " + newBalance2);
+
+      // Assert
+
+      expect(Number(oldBalance)).to.be.lessThan(Number(newBalance));  //  FAILS dont know why.
+    });
 
 
   })
 });
+
+function transferTestEthersToVault(_eth) {
+  const result = wallet.sendTransaction({
+    to: vault.address,
+    value: ethers.utils.parseEther(_eth.toString())
+  });
+  return result;
+}
+

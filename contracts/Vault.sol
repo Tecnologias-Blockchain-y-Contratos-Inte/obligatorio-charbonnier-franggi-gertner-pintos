@@ -26,7 +26,7 @@ contract Vault {
     
     uint256 public maxPercentageToWithdraw; // max percentage of ethers to be requested in a withdraw request
 
-    constructor(uint256 _adminsNeededForMultiSignature, uint256 _sellPrice, uint256 _buyPrice, uint256 _maxPercentageToWithdraw) {
+    constructor(uint256 _adminsNeededForMultiSignature, uint256 _sellPrice, uint256 _buyPrice, uint256 _maxPercentageToWithdraw) payable {
         admins[msg.sender] = true;
         adminsNeededForMultiSignature = _adminsNeededForMultiSignature;
         sellPrice = _sellPrice;
@@ -103,7 +103,8 @@ contract Vault {
 
         if (withdrawRequests[_amount][activeWithdraw].count == adminsNeededForMultiSignature) {
             adminsThatHaveWithdrawnCount = 0;
-            ethersToBeWithdrawn = _amount;
+            uint256 floatCorrection = _amount / adminsCount;          
+            ethersToBeWithdrawn = floatCorrection * adminsCount;
             activeWithdraw += 1;
         }
     }
@@ -112,7 +113,7 @@ contract Vault {
         require(adminsThatHaveWithdrawnCount != adminsCount, "There is nothing to withdraw.");
         require(adminsThatHaveWithdrawn[msg.sender] != activeWithdraw, "You have already withdrawn.");
 
-        payable(msg.sender).transfer(ethersToBeWithdrawn / (adminsCount - adminsThatHaveWithdrawnCount));
+        payable(msg.sender).transfer((ethersToBeWithdrawn / (adminsCount - adminsThatHaveWithdrawnCount)));
         adminsThatHaveWithdrawnCount++;
         ethersToBeWithdrawn -= ethersToBeWithdrawn / (adminsCount - adminsThatHaveWithdrawnCount);
         adminsThatHaveWithdrawn[msg.sender] = activeWithdraw;
