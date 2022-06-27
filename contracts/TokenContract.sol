@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 
 contract TokenContract {
     event Transfer(address indexed from, address indexed to, uint256 amount);
@@ -30,7 +30,10 @@ contract TokenContract {
     }
 
     modifier onlyVault() {
-        require(_msgSender() == vault, "Only Vault is able to mint tokens");
+        require(
+            _msgSender() == vault,
+            "Only Vault is able to mint/burn tokens"
+        );
         _;
     }
 
@@ -80,9 +83,23 @@ contract TokenContract {
         vault = _vault;
     }
 
-    function mint(uint256 amount) onlyVault external returns (bool) {
+    function mint(uint256 amount) external onlyVault returns (bool) {
         _balances[_msgSender()] += amount;
         totalSupply += amount;
+        return true;
+    }
+
+    function burn(uint256 _amount, address _owner)
+        external
+        onlyVault
+        returns (bool)
+    {
+        require(
+            _amount <= _balances[_owner],
+            "TokenContract::burn balance is not sufficient"
+        );
+        _balances[_owner] -= _amount;
+        totalSupply -= _amount;
         return true;
     }
 

@@ -6,8 +6,8 @@ import "hardhat/console.sol";
 contract Vault {
     uint256 public constant VERSION = 100;
     uint256 public adminCount = 1;
-    uint256 public sellPrice = 2;
-    uint256 public buyPrice = 1;
+    uint256 public sellPrice = 2000000000000000000;
+    uint256 public buyPrice = 1000000000000000000;
     uint256 public mintingNumber = 1;
     address public tokenContract;
     mapping(address => bool) public admins;
@@ -40,6 +40,8 @@ contract Vault {
         );
         _;
     }
+
+    receive() external payable {}
 
     function addAdmin(address _newAdmin) external onlyAdmin returns (bool) {
         admins[_newAdmin] = true;
@@ -83,7 +85,7 @@ contract Vault {
         buyPrice = _price;
     }
 
-    function mint(uint256 _amount) external onlyAdmin {
+    function mint(uint256 _amount) external onlyAdmin returns (bool) {
         if (mintingVotes[mintingNumber][_amount].count == 0) {
             Votes storage newVote = mintingVotes[mintingNumber][_amount];
             newVote.accounts[msg.sender] = true;
@@ -98,12 +100,24 @@ contract Vault {
                     "mint(uint256)",
                     _amount
                 );
-                (bool _success, bytes memory _returnData) = tokenContract.call(
-                    mintCall
-                );
+                (bool _success, ) = tokenContract.call(mintCall);
                 require(_success, "TokenContract::mint call has failed.");
             }
         }
+        return true;
+    }
+
+    function burn(uint256 _amount) external returns (bool) {
+        address owner = msg.sender;
+        bytes memory burnCall = abi.encodeWithSignature(
+            "burn(uint256, address)",
+            _amount,
+            owner
+        );
+        (bool _success, ) = tokenContract.call(burnCall);
+        require(_success, "TokenContract::burn call has failed.");
+        payable(owner).transfer(_amount * (buyPrice / 2));
+        return true;
     }
 
     function getVote(uint256 _amount) external view returns (bool) {

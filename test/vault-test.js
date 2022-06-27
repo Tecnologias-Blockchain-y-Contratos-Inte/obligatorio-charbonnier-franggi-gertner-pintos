@@ -68,8 +68,8 @@ describe("Vault", () => {
   describe("Sell Buy Price", () => {
     it("should be able to set buy price less than sell price, as an admin", async () => {
       // Arrange
-      const sellPrice = 10;
-      const buyPrice = 5;
+      const sellPrice = ethers.utils.parseEther("3");
+      const buyPrice = ethers.utils.parseEther("2");
       await vault.setSellPrice(sellPrice);
       // Act
       await vault.setBuyPrice(buyPrice);
@@ -88,14 +88,14 @@ describe("Vault", () => {
 
     it("should not be able to set buy price greater than sell price, as an admin", async () => {
       // Arrange
-      const buyPrice = 10;
+      const buyPrice = ethers.utils.parseEther("4");
       // Assert
       await expect(vault.setBuyPrice(buyPrice)).to.be.reverted;
     });
 
     it("should be able to set sell price greater than buy price, as an admin", async () => {
       // Arrange
-      const sellPrice = 10;
+      const sellPrice = ethers.utils.parseEther("4");
       // Act
       await vault.setSellPrice(sellPrice);
       // Assert
@@ -104,7 +104,7 @@ describe("Vault", () => {
 
     it("should not be able to set sell price greater than buy price, as not an admin", async () => {
       // Arrange
-      const sellPrice = 10;
+      const sellPrice = ethers.utils.parseEther("3");
       const vaultFromAnotherAccount = vault.connect(walletTo);
       // Assert
       await expect(vaultFromAnotherAccount.setSellPrice(sellPrice)).to.be
@@ -113,7 +113,7 @@ describe("Vault", () => {
 
     it("should not be able to set sell price less than buy price, as an admin", async () => {
       // Arrange
-      const initialSellPrice = 15;
+      const initialSellPrice = ethers.utils.parseEther("4");
       const sellPrice = 5;
       const buyPrice = 10;
       await vault.setSellPrice(initialSellPrice);
@@ -130,28 +130,53 @@ describe("Vault", () => {
       expect(await vault.getVote(amount)).to.equal(true);
     });
 
-    it("should not be able to vote", async () => {
+    it("should not be able to vote as not admin", async () => {
       const amount = 20;
       const vaultFromAnotherAccount = vault.connect(walletTo);
       await expect(vaultFromAnotherAccount.mint(amount)).to.be.reverted;
     });
 
-    it("should be able to mint", async () => {
+    it("should be able to mint when multi-firm is complete", async () => {
       const amount = 20;
-      const mintingNumber = ethers
-        .BigNumber.from(await vault.mintingNumber())
-        .toNumber();
+      const mintingNumber = ethers.BigNumber.from(
+        await vault.mintingNumber()
+      ).toNumber();
       await vault.mint(amount);
       await vault.addAdmin(walletTo.address);
       const tokenContract = await deployMockContract(wallet, TokenContract.abi);
       await tokenContract.mock.mint.withArgs(amount).returns(true);
       const vaultFromAnotherAccount = vault.connect(walletTo);
       await vaultFromAnotherAccount.mint(amount);
-      const newMintingNumber = ethers
-        .BigNumber.from(await vault.mintingNumber())
-        .toNumber();
+      const newMintingNumber = ethers.BigNumber.from(
+        await vault.mintingNumber()
+      ).toNumber();
 
       expect(newMintingNumber).to.equal(mintingNumber + 1);
+    });
+  });
+
+  describe("Burn", () => {
+    it("should be able to burn", async () => {
+      await walletTo.sendTransaction({
+        to: vault.address,
+        value: ethers.utils.parseEther("2"),
+      });
+
+      const amount = 2;
+      const tokenContract = await deployMockContract(wallet, TokenContract.abi);
+      await tokenContract.mock.burn
+        .withArgs(amount, wallet.address)
+        .returns(true);
+
+      const balanceBefore = await provider.getBalance(wallet.address);
+      const tx = await vault.burn(amount);
+      const receipt = await tx.wait();
+      const gasSpent = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+      const balanceAfter = await provider.getBalance(wallet.address);
+
+      expect(balanceAfter.sub(balanceBefore).add(gasSpent)).to.eq(
+        ethers.utils.parseEther("1")
+      );
     });
   });
 });
