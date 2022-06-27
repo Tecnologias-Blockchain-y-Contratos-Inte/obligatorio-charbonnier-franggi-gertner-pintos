@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "deploy-hardhat": "npx hardhat run scripts/deployFarm.js",
-    "deploy-ganache": "npx hardhat run scripts/deployFarm.js --network ganache"
+    "deploy-ganache": "npx hardhat run scripts/deployFarm.js --network ganache",
+    "test": "npx hardhat test"
   },
   "repository": {
     "type": "git",
