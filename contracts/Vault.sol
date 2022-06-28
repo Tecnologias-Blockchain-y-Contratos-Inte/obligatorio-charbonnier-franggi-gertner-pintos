@@ -5,28 +5,31 @@ import "hardhat/console.sol";
 
 contract Vault {
     uint256 public constant VERSION = 100;
-
     mapping(address => bool) public admins;
-    uint256 public adminsCount = 1;
-    uint256 private adminsNeededForMultiSignature;
-
     uint256 public sellPrice;
     uint256 public buyPrice;
 
-    struct WithdrawRequest {
-        mapping(address => bool) hasRequested; // address => hasRequested the withdraw
-        uint256 count; // number of withdraw requests for this amount and withdraw number
+  struct WithdrawVote {
+        uint256 count;
+        mapping(address => bool) accounts;
     }
 
-    mapping(uint256 => mapping(uint256 => WithdrawRequest)) private withdrawRequests; // amount => (withdrawNumber => WithdrawRequest)
-    mapping(address => uint256) private adminsThatHaveWithdrawn;
-    uint256 private adminsThatHaveWithdrawnCount = 1; // number of admins that have withdrawn
-    uint256 private ethersToBeWithdrawn = 0; // amount of ethers to be withdrawn by all admins in total
-    uint256 private activeWithdraw = 1; // active withdraw number
-    
-    uint256 public maxPercentageToWithdraw; // max percentage of ethers to be requested in a withdraw request
+    mapping(uint256 => mapping(uint256 => WithdrawVote)) private withdrawVotes;
+    uint256 public adminsThatHaveWithdrawnCount = 1;
+    mapping(uint256=> mapping(address => bool)) public adminsThatHaveWithdrawn;
+    uint256 public ethersToBeWithdrawn  = 0;
+    uint256 withdrawId = 1;
+    uint256 public adminCount = 1;
+    uint256 private adminsNeededForMultiSignature = 2;
+    uint256 public maxPercentageToWithdraw = 50; // max percentage of ethers to be requested in a withdraw request
 
-    constructor(uint256 _adminsNeededForMultiSignature, uint256 _sellPrice, uint256 _buyPrice, uint256 _maxPercentageToWithdraw) payable {
+
+   constructor(
+        uint256 _adminsNeededForMultiSignature,
+        uint256 _sellPrice,
+        uint256 _buyPrice,
+        uint256 _maxPercentageToWithdraw
+    ) payable {
         admins[msg.sender] = true;
         adminsNeededForMultiSignature = _adminsNeededForMultiSignature;
         sellPrice = _sellPrice;
@@ -40,34 +43,22 @@ contract Vault {
     }
 
     modifier notLastAdmin() {
-        require(adminsCount > 1, "The last admin cannot be removed.");
+        require(adminCount > 1, "The last admin cannot be removed.");
         _;
     }
 
     function addAdmin(address _newAdmin) external onlyAdmin returns (bool) {
         admins[_newAdmin] = true;
-        // if there is an active withdraw, then we need to update the admins that have withdrawn
-        // if (adminsThatHaveWithdrawnCount != adminsCount) {
-            adminsThatHaveWithdrawn[_newAdmin] = activeWithdraw;
-            adminsThatHaveWithdrawnCount++;
-        //  }
-        adminsCount++;
+        adminCount++;        
+        adminsThatHaveWithdrawn[withdrawId][_newAdmin] = false;
+        adminsThatHaveWithdrawnCount++;      
         return true;
     }
 
-    function removeAdmin(address _admin) external payable onlyAdmin notLastAdmin returns (bool) {
+   function removeAdmin(address _admin) external onlyAdmin notLastAdmin returns (bool)    {
         require(admins[_admin], "The address to remove is not an admin.");
-
         delete admins[_admin];
-        // if the admin has not withdrawn, then the admin has to receive the ethers
-        if (adminsThatHaveWithdrawnCount != adminsCount && adminsThatHaveWithdrawn[_admin] != activeWithdraw) {
-            payable(_admin).transfer(ethersToBeWithdrawn / (adminsCount - adminsThatHaveWithdrawnCount));
-            ethersToBeWithdrawn -= ethersToBeWithdrawn / (adminsCount - adminsThatHaveWithdrawnCount);
-            adminsThatHaveWithdrawn[_admin] = activeWithdraw;
-        } else { // if the admin has already withdrawn, then we need to update the admins that have withdrawn count
-            adminsThatHaveWithdrawnCount--;
-        }
-        adminsCount--;
+        adminCount--;
         return true;
     }
 
@@ -93,32 +84,47 @@ contract Vault {
         maxPercentageToWithdraw = _maxPercentage;
     }
 
-    function requestWithdraw(uint256 _amount) external onlyAdmin {
-        require(adminsThatHaveWithdrawnCount == adminsCount, "You can't start two simultaneous withdraw operations.");
-        require(_amount < ((maxPercentageToWithdraw  * address(this).balance) / 100), "You can't exceed the maximum to withdraw.");
-        require(!withdrawRequests[_amount][activeWithdraw].hasRequested[msg.sender], "You have already requested this withdraw.");
+   function requestWithdraw(uint256 _amount) external onlyAdmin {
+        require(
+            adminsThatHaveWithdrawnCount == adminCount,
+            "You can't start two simultaneous withdraw operations."
+        );
+        require(
+            _amount < ((maxPercentageToWithdraw * address(this).balance) / 100),
+            "You can't exceed the maximum to withdraw."
+        );
+        require(
+            !withdrawVotes[withdrawId][_amount].accounts[msg.sender],
+            "You have already requested this withdraw."
+        );
 
-        withdrawRequests[_amount][activeWithdraw].hasRequested[msg.sender] = true;
-        withdrawRequests[_amount][activeWithdraw].count += 1;
-
-        if (withdrawRequests[_amount][activeWithdraw].count == adminsNeededForMultiSignature) {
-            adminsThatHaveWithdrawnCount = 0;
-            uint256 floatCorrection = _amount / adminsCount;          
-            ethersToBeWithdrawn = floatCorrection * adminsCount;
-            activeWithdraw += 1;
+        if (withdrawVotes[withdrawId][_amount].count == 0) {
+            WithdrawVote storage newVote = withdrawVotes[withdrawId][_amount];
+            newVote.accounts[msg.sender] = true;
+            newVote.count = 1;
+        } else if (!withdrawVotes[withdrawId][_amount].accounts[msg.sender]) {
+            withdrawVotes[withdrawId][_amount].accounts[msg.sender] = true;
+            withdrawVotes[withdrawId][_amount].count += 1;
+            if (
+                withdrawVotes[withdrawId][_amount].count ==
+                adminsNeededForMultiSignature
+            ) {
+                adminsThatHaveWithdrawnCount = 0;
+                withdrawId++;                
+                uint256 floatCorrection = _amount / adminCount;          
+                ethersToBeWithdrawn = floatCorrection * adminCount * 100000000;
+           }
         }
     }
 
     function withdraw() external payable onlyAdmin {
-        require(adminsThatHaveWithdrawnCount != adminsCount, "There is nothing to withdraw.");
-        require(adminsThatHaveWithdrawn[msg.sender] != activeWithdraw, "You have already withdrawn.");
-
-        payable(msg.sender).transfer((ethersToBeWithdrawn / (adminsCount - adminsThatHaveWithdrawnCount)));
-        adminsThatHaveWithdrawnCount++;
-        ethersToBeWithdrawn -= ethersToBeWithdrawn / (adminsCount - adminsThatHaveWithdrawnCount);
-        adminsThatHaveWithdrawn[msg.sender] = activeWithdraw;
+        require(adminsThatHaveWithdrawnCount != adminCount, "There is nothing to withdraw."); // Everyone has withdrawn
+        require(adminsThatHaveWithdrawn[withdrawId][msg.sender] != true, "You have already withdrawn.");
+        uint256 transferEthers = ethersToBeWithdrawn / adminCount;
+        payable(msg.sender).transfer(transferEthers);
+        adminsThatHaveWithdrawnCount++;        
+        adminsThatHaveWithdrawn[withdrawId][msg.sender] = true;
     }
-
 
     receive() external payable {}
 }
