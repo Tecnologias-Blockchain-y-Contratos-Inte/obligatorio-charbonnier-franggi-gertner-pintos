@@ -112,7 +112,7 @@ contract Vault {
                 adminsThatHaveWithdrawnCount = 0;
                 withdrawId++;                
                 uint256 floatCorrection = _amount / adminCount;          
-                ethersToBeWithdrawn = floatCorrection * adminCount * 100000000;
+                ethersToBeWithdrawn = floatCorrection * adminCount;
            }
         }
     }
