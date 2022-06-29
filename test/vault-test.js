@@ -188,7 +188,7 @@ describe("Vault", () => {
     /* global BigInt */
     it("Should be able to withdraw when a previous request was approved", async () => {
       await vault.addAdmin(walletTo.address);
-      const testValue = 2000000000000000000n; // ALLWAYS IN ETHERS OR IT DOESENT WORK!
+      const testValue = 2000000000000000000n; 
 
       await transferTestEthersToVault(5);
 
@@ -216,7 +216,7 @@ describe("Vault", () => {
 
     it("Should be able to perform more than one withdraw", async () => {
       await vault.addAdmin(walletTo.address);
-      const testValue = 2000000000000000000n; // ALLWAYS IN ETHERS OR IT DOESENT WORK!
+      const testValue = 2000000000000000000n; 
       await transferTestEthersToVault(5);
       await vault.requestWithdraw(testValue);
       const secondAdmin = vault.connect(walletTo);
