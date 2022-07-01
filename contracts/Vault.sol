@@ -5,20 +5,21 @@ import "hardhat/console.sol";
 
 contract Vault {
     uint256 public constant VERSION = 100;
-    mapping(uint256 => mapping(uint256 => WithdrawVote)) private withdrawVotes;
     uint256 public adminsThatHaveWithdrawnCount = 1;
-    mapping(uint256=> mapping(address => bool)) public adminsThatHaveWithdrawn;
-    uint256 public ethersToBeWithdrawn  = 0;
-    uint256 withdrawId = 1;
-    uint256 public adminCount = 1;
-    uint256 private adminsNeededForMultiSignature = 2;
-    uint256 public maxPercentageToWithdraw = 50; // max percentage of ethers to be requested in a withdraw request
-    uint256 public sellPrice = 2000000000000000000;
-    uint256 public buyPrice = 1000000000000000000;
     uint256 public mintingNumber = 1;
+    uint256 public withdrawId = 1;
+    uint256 public adminCount = 1;
+    uint256 public ethersToBeWithdrawn = 0;
+    uint256 public maxPercentageToWithdraw;
+    uint256 public sellPrice;
+    uint256 public buyPrice;
     address public tokenContract;
+    uint256 private adminsNeededForMultiSignature;
+
     mapping(address => bool) public admins;
+    mapping(uint256 => mapping(address => bool)) public adminsThatHaveWithdrawn;
     mapping(uint256 => mapping(uint256 => Votes)) private mintingVotes;
+    mapping(uint256 => mapping(uint256 => WithdrawVote)) private withdrawVotes;
 
     struct Votes {
         uint256 count;
@@ -26,11 +27,11 @@ contract Vault {
     }
 
     struct WithdrawVote {
-    uint256 count;
-    mapping(address => bool) accounts;
+        uint256 count;
+        mapping(address => bool) accounts;
     }
 
-   constructor(
+    constructor(
         uint256 _adminsNeededForMultiSignature,
         uint256 _sellPrice,
         uint256 _buyPrice,
@@ -66,13 +67,18 @@ contract Vault {
 
     function addAdmin(address _newAdmin) external onlyAdmin returns (bool) {
         admins[_newAdmin] = true;
-        adminCount++;        
+        adminCount++;
         adminsThatHaveWithdrawn[withdrawId][_newAdmin] = false;
-        adminsThatHaveWithdrawnCount++;      
+        adminsThatHaveWithdrawnCount++;
         return true;
     }
 
-   function removeAdmin(address _admin) external onlyAdmin notLastAdmin returns (bool)    {
+    function removeAdmin(address _admin)
+        external
+        onlyAdmin
+        notLastAdmin
+        returns (bool)
+    {
         require(admins[_admin], "The address to remove is not an admin.");
         delete admins[_admin];
         adminCount--;
@@ -104,12 +110,18 @@ contract Vault {
     }
 
     function setMaxPercentage(uint256 _maxPercentage) external onlyAdmin {
-        require(_maxPercentage > 0, "The maximum percentage must be greater than 0.");
-        require(_maxPercentage <= 50, "The maximum percentage must be less or equal than 50.");
+        require(
+            _maxPercentage > 0,
+            "The maximum percentage must be greater than 0."
+        );
+        require(
+            _maxPercentage <= 50,
+            "The maximum percentage must be less or equal than 50."
+        );
         maxPercentageToWithdraw = _maxPercentage;
     }
 
-   function requestWithdraw(uint256 _amount) external onlyAdmin {
+    function requestWithdraw(uint256 _amount) external onlyAdmin {
         require(
             adminsThatHaveWithdrawnCount == adminCount,
             "You can't start two simultaneous withdraw operations."
@@ -135,22 +147,27 @@ contract Vault {
                 adminsNeededForMultiSignature
             ) {
                 adminsThatHaveWithdrawnCount = 0;
-                withdrawId++;                
-                uint256 floatCorrection = _amount / adminCount;          
+                withdrawId++;
+                uint256 floatCorrection = _amount / adminCount;
                 ethersToBeWithdrawn = floatCorrection * adminCount;
-           }
+            }
         }
     }
 
     function withdraw() external payable onlyAdmin {
-        require(adminsThatHaveWithdrawnCount != adminCount, "There is nothing to withdraw."); // Everyone has withdrawn
-        require(adminsThatHaveWithdrawn[withdrawId][msg.sender] != true, "You have already withdrawn.");
+        require(
+            adminsThatHaveWithdrawnCount != adminCount,
+            "There is nothing to withdraw."
+        );
+        require(
+            adminsThatHaveWithdrawn[withdrawId][msg.sender] != true,
+            "You have already withdrawn."
+        );
         uint256 transferEthers = ethersToBeWithdrawn / adminCount;
         payable(msg.sender).transfer(transferEthers);
-        adminsThatHaveWithdrawnCount++;        
+        adminsThatHaveWithdrawnCount++;
         adminsThatHaveWithdrawn[withdrawId][msg.sender] = true;
     }
-
 
     function mint(uint256 _amount) external onlyAdmin returns (bool) {
         if (mintingVotes[mintingNumber][_amount].count == 0) {
