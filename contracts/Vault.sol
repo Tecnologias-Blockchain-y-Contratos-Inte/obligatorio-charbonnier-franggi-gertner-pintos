@@ -19,14 +19,9 @@ contract Vault {
     mapping(address => bool) public admins;
     mapping(uint256 => mapping(address => bool)) public adminsThatHaveWithdrawn;
     mapping(uint256 => mapping(uint256 => Votes)) private mintingVotes;
-    mapping(uint256 => mapping(uint256 => WithdrawVote)) private withdrawVotes;
+    mapping(uint256 => mapping(uint256 => Votes)) private withdrawVotes;
 
     struct Votes {
-        uint256 count;
-        mapping(address => bool) accounts;
-    }
-
-    struct WithdrawVote {
         uint256 count;
         mapping(address => bool) accounts;
     }
@@ -136,7 +131,7 @@ contract Vault {
         );
 
         if (withdrawVotes[withdrawId][_amount].count == 0) {
-            WithdrawVote storage newVote = withdrawVotes[withdrawId][_amount];
+            Votes storage newVote = withdrawVotes[withdrawId][_amount];
             newVote.accounts[msg.sender] = true;
             newVote.count = 1;
         } else if (!withdrawVotes[withdrawId][_amount].accounts[msg.sender]) {
@@ -154,13 +149,13 @@ contract Vault {
         }
     }
 
-    function withdraw() external payable onlyAdmin {
+    function withdraw() external onlyAdmin {
         require(
             adminsThatHaveWithdrawnCount != adminCount,
             "There is nothing to withdraw."
         );
         require(
-            adminsThatHaveWithdrawn[withdrawId][msg.sender] != true,
+            !adminsThatHaveWithdrawn[withdrawId][msg.sender],
             "You have already withdrawn."
         );
         uint256 transferEthers = ethersToBeWithdrawn / adminCount;
@@ -174,7 +169,7 @@ contract Vault {
             Votes storage newVote = mintingVotes[mintingNumber][_amount];
             newVote.accounts[msg.sender] = true;
             newVote.count = 1;
-        } else if (!mintingVotes[mintingNumber][_amount].accounts[msg.sender]) {
+        } else {
             mintingVotes[mintingNumber][_amount].accounts[msg.sender] = true;
             mintingVotes[mintingNumber][_amount].count += 1;
 
