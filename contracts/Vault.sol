@@ -5,23 +5,39 @@ import "hardhat/console.sol";
 
 contract Vault {
     uint256 public constant VERSION = 100;
-    uint256 public adminCount = 1;
-    uint256 public sellPrice = 2000000000000000000;
-    uint256 public buyPrice = 1000000000000000000;
+    uint256 public adminsThatHaveWithdrawnCount = 1;
     uint256 public mintingNumber = 1;
+    uint256 public withdrawId = 1;
+    uint256 public adminCount = 1;
+    uint256 public ethersToBeWithdrawn = 0;
+    uint256 public maxPercentageToWithdraw;
+    uint256 public sellPrice;
+    uint256 public buyPrice;
     address public tokenContract;
     address public farmContract;
+    uint256 private adminsNeededForMultiSignature;
 
     mapping(address => bool) public admins;
+    mapping(uint256 => mapping(address => bool)) public adminsThatHaveWithdrawn;
     mapping(uint256 => mapping(uint256 => Votes)) private mintingVotes;
+    mapping(uint256 => mapping(uint256 => Votes)) private withdrawVotes;
 
     struct Votes {
         uint256 count;
         mapping(address => bool) accounts;
     }
 
-    constructor() {
+    constructor(
+        uint256 _adminsNeededForMultiSignature,
+        uint256 _sellPrice,
+        uint256 _buyPrice,
+        uint256 _maxPercentageToWithdraw
+    ) payable {
         admins[msg.sender] = true;
+        adminsNeededForMultiSignature = _adminsNeededForMultiSignature;
+        sellPrice = _sellPrice;
+        buyPrice = _buyPrice;
+        maxPercentageToWithdraw = _maxPercentageToWithdraw;
     }
 
     modifier onlyAdmin() {
@@ -56,6 +72,8 @@ contract Vault {
     function addAdmin(address _newAdmin) external onlyAdmin returns (bool) {
         admins[_newAdmin] = true;
         adminCount++;
+        adminsThatHaveWithdrawn[withdrawId][_newAdmin] = false;
+        adminsThatHaveWithdrawnCount++;
         return true;
     }
 
@@ -95,6 +113,66 @@ contract Vault {
         buyPrice = _price;
     }
 
+    function setMaxPercentage(uint256 _maxPercentage) external onlyAdmin {
+        require(
+            _maxPercentage > 0,
+            "The maximum percentage must be greater than 0."
+        );
+        require(
+            _maxPercentage <= 50,
+            "The maximum percentage must be less or equal than 50."
+        );
+        maxPercentageToWithdraw = _maxPercentage;
+    }
+
+    function requestWithdraw(uint256 _amount) external onlyAdmin {
+        require(
+            adminsThatHaveWithdrawnCount == adminCount,
+            "You can't start two simultaneous withdraw operations."
+        );
+        require(
+            _amount < ((maxPercentageToWithdraw * address(this).balance) / 100),
+            "You can't exceed the maximum to withdraw."
+        );
+        require(
+            !withdrawVotes[withdrawId][_amount].accounts[msg.sender],
+            "You have already requested this withdraw."
+        );
+
+        if (withdrawVotes[withdrawId][_amount].count == 0) {
+            Votes storage newVote = withdrawVotes[withdrawId][_amount];
+            newVote.accounts[msg.sender] = true;
+            newVote.count = 1;
+        } else {
+            withdrawVotes[withdrawId][_amount].accounts[msg.sender] = true;
+            withdrawVotes[withdrawId][_amount].count += 1;
+            if (
+                withdrawVotes[withdrawId][_amount].count ==
+                adminsNeededForMultiSignature
+            ) {
+                adminsThatHaveWithdrawnCount = 0;
+                withdrawId++;
+                uint256 floatCorrection = _amount / adminCount;
+                ethersToBeWithdrawn = floatCorrection * adminCount;
+            }
+        }
+    }
+
+    function withdraw() external onlyAdmin {
+        require(
+            adminsThatHaveWithdrawnCount != adminCount,
+            "There is nothing to withdraw."
+        );
+        require(
+            !adminsThatHaveWithdrawn[withdrawId][msg.sender],
+            "You have already withdrawn."
+        );
+        uint256 transferEthers = ethersToBeWithdrawn / adminCount;
+        payable(msg.sender).transfer(transferEthers);
+        adminsThatHaveWithdrawnCount++;
+        adminsThatHaveWithdrawn[withdrawId][msg.sender] = true;
+    }
+
     function mint(uint256 _amount) external onlyAdmin returns (bool) {
         if (mintingVotes[mintingNumber][_amount].count == 0) {
             Votes storage newVote = mintingVotes[mintingNumber][_amount];
@@ -104,7 +182,10 @@ contract Vault {
             mintingVotes[mintingNumber][_amount].accounts[msg.sender] = true;
             mintingVotes[mintingNumber][_amount].count += 1;
 
-            if (mintingVotes[mintingNumber][_amount].count == 2) {
+            if (
+                mintingVotes[mintingNumber][_amount].count ==
+                adminsNeededForMultiSignature
+            ) {
                 mintingNumber++;
                 bytes memory mintCall = abi.encodeWithSignature(
                     "mint(uint256)",
