@@ -57,8 +57,8 @@ contract TokenContract {
         uint256 value
     ) public returns (bool) {
         address spender = _msgSender();
-        _spendAllowance(from, spender, value);
         _transfer(from, to, value);
+        _spendAllowance(from, spender, value);
         return true;
     }
 

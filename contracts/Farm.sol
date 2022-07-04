@@ -8,8 +8,8 @@ contract Farm {
     uint256 private constant INCREASE = 1;
     uint256 private constant DECREASE = 2;
 
-    address private tokenContract;
-    address private vault;
+    address public tokenContract;
+    address public vault;
 
     mapping(address => FarmData) private balances;
 
@@ -23,9 +23,14 @@ contract Farm {
         uint256 timestamp;
     }
 
-    constructor(address _tokenContract, address _vault) {
+    constructor(
+        address _tokenContract,
+        address _vault,
+        uint256 _APR
+    ) {
         tokenContract = _tokenContract;
         vault = _vault;
+        APR = _APR;
     }
 
     function stake(uint256 _amount) external returns (bool) {
@@ -63,9 +68,10 @@ contract Farm {
         }
 
         totalStake += newStake - oldStake;
-        balances[msg.sender].stake = newStake;
-        balances[msg.sender].APR = newAPR;
-        balances[msg.sender].timestamp = newTimestamp;
+        FarmData storage newFarmData = balances[msg.sender];
+        newFarmData.stake = newStake;
+        newFarmData.APR = newAPR;
+        newFarmData.timestamp = newTimestamp;
 
         return true;
     }
@@ -97,20 +103,23 @@ contract Farm {
 
         require(_success, "Something went wrong while unstaking");
 
-        uint256 income = (balances[msg.sender].stake - _amount) *
-            balances[msg.sender].APR *
-            100;
-        uint256 newAPR = (income * 100) / newStake;
+        if (newStake > 0) {
+            uint256 income = (balances[msg.sender].stake - _amount) *
+                balances[msg.sender].APR *
+                100;
+            uint256 newAPR = (income * 100) / newStake;
+            balances[msg.sender].APR = newAPR;
+        } else {
+            balances[msg.sender].APR = 0;
+        }
 
         totalStake -= oldStake - newStake;
         balances[msg.sender].stake = newStake;
-        balances[msg.sender].APR = newAPR;
         balances[msg.sender].timestamp = newTimestamp;
 
         return true;
     }
 
-    // TODO: test functionality when token contract ready.
     function withdrawYield() external returns (bool) {
         uint256 newTimestamp = block.timestamp;
         uint256 yield = getYieldForTimestamp(newTimestamp);
@@ -143,14 +152,10 @@ contract Farm {
         view
         returns (uint256)
     {
-        // time in years
-        uint256 timeDiff = _timestamp -
-            (balances[msg.sender].timestamp / 60 / 60 / 24 / 36524) *
-            100;
-
-        uint256 yield = (balances[msg.sender].stake *
+        // An year has 31556926 seconds, and we multiply this by 100 because of the APR, that is a percentage
+        uint256 yield = ((balances[msg.sender].stake *
             balances[msg.sender].APR *
-            timeDiff) / 100;
+            (_timestamp - balances[msg.sender].timestamp)) / 3155692600);
 
         return yield;
     }
@@ -163,7 +168,7 @@ contract Farm {
         uint256 yield = getYieldForTimestamp(_timestamp);
         if (_variation == INCREASE) {
             return balances[msg.sender].stake + yield + _amount;
-        } else if (_variation == INCREASE) {
+        } else if (_variation == DECREASE) {
             return balances[msg.sender].stake + yield - _amount;
         } else {
             revert("Invalid variation");
