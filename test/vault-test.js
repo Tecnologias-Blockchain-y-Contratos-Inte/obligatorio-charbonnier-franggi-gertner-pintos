@@ -11,8 +11,8 @@ const [wallet, walletTo, thirdWallet] = provider.getWallets();
 
 describe("Vault", () => {
   beforeEach(async () => {
-    vault = await deployContract(wallet, Vault, [2, 2, 1, 50]);
-    vault.balance = 9999;
+    const options = { value: ethers.utils.parseUnits("99") };
+    vault = await deployContract(wallet, Vault, [2, 2, 1, 50], options);
   });
 
   describe("Constructor", () => {
@@ -112,11 +112,7 @@ describe("Vault", () => {
 
     it("Shouldnt allow to excede the max request porcentage", async () => {
       await vault.setMaxPercentage(20);
-      await wallet.sendTransaction({
-        to: vault.address,
-        value: ethers.utils.parseEther("0.0000000000000001"),
-      });
-      const testValue = 10000;
+      const testValue = ethers.utils.parseUnits("999");
       await expect(vault.requestWithdraw(testValue)).to.be.reverted;
     });
 
@@ -125,7 +121,6 @@ describe("Vault", () => {
       await vault.addAdmin(thirdWallet.address);
       await vault.setMaxPercentage(50);
       const testValue = 1;
-      await transferTestEthersToVault(100);
       await vault.requestWithdraw(testValue); // first admin request
       const secondAdmin = vault.connect(walletTo);
       await secondAdmin.requestWithdraw(testValue);
@@ -137,7 +132,6 @@ describe("Vault", () => {
       await vault.addAdmin(thirdWallet.address);
       await vault.setMaxPercentage(50);
       const testValue1 = 1;
-      await transferTestEthersToVault(100);
       await vault.requestWithdraw(testValue1);
       await expect(vault.requestWithdraw(testValue1)).to.be.reverted;
     });
@@ -149,7 +143,6 @@ describe("Vault", () => {
     it("Should be able to withdraw when a previous request was approved", async () => {
       await vault.addAdmin(walletTo.address);
       const testValue = 2000000000000000000n;
-      await transferTestEthersToVault(5);
       await vault.requestWithdraw(testValue);
       const secondAdmin = vault.connect(walletTo);
       await secondAdmin.requestWithdraw(testValue);
@@ -174,14 +167,12 @@ describe("Vault", () => {
     it("Should be able to perform more than one withdraw", async () => {
       await vault.addAdmin(walletTo.address);
       const testValue = 2000000000000000000n;
-      await transferTestEthersToVault(5);
       await vault.requestWithdraw(testValue);
       const secondAdmin = vault.connect(walletTo);
       await secondAdmin.requestWithdraw(testValue);
       const balanceBefore = await waffle.provider.getBalance(walletTo.address);
       await vault.withdraw();
       await secondAdmin.withdraw();
-      await transferTestEthersToVault(5);
       await vault.requestWithdraw(testValue);
       await secondAdmin.requestWithdraw(testValue);
       await vault.withdraw();
@@ -228,11 +219,6 @@ describe("Vault", () => {
       await vault.setSellPrice(ethers.utils.parseEther("2"));
       await vault.setBuyPrice(ethers.utils.parseEther("1"));
 
-      await walletTo.sendTransaction({
-        to: vault.address,
-        value: ethers.utils.parseEther("2"),
-      });
-
       const amount = 2;
       const tokenContract = await deployMockContract(wallet, TokenContract.abi);
       await tokenContract.mock.burn
@@ -251,11 +237,55 @@ describe("Vault", () => {
     });
   });
 
-  function transferTestEthersToVault(_eth) {
-    const result = wallet.sendTransaction({
-      to: vault.address,
-      value: ethers.utils.parseEther(_eth.toString()),
+  describe("Buy and sell tokens", () => {
+
+    it("shouldnt be able to buy tokens if you dont have enough ether", async () => {
+      await vault.setSellPrice(ethers.utils.parseEther("99"));
+      await vault.setBuyPrice(ethers.utils.parseEther("1"));
+      await expect(walletTo.sendTransaction({
+        to: vault.address,
+        value: ethers.utils.parseEther("1"),
+      })).to.be.reverted;
     });
-    return result;
-  }
+
+    it("shouldnt be able to buy tokens if vault doesent have enough tokens", async () => {
+      await vault.setSellPrice(ethers.utils.parseEther("2"));
+      await vault.setBuyPrice(ethers.utils.parseEther("1"));
+      const tokenContract = await deployMockContract(wallet, TokenContract.abi);
+      await tokenContract.mock.balanceOf
+        .withArgs(vault.address)
+        .returns(0);
+      await expect(walletTo.sendTransaction({
+        to: vault.address,
+        value: ethers.utils.parseEther("2"),
+      })).to.be.reverted;
+    });
+
+    /*
+        it("Should be able to buy tokens", async () => {
+          await vault.setSellPrice(ethers.utils.parseEther("2"));
+          await vault.setBuyPrice(ethers.utils.parseEther("1"));
+          const tokenContract = await deployMockContract(wallet, TokenContract.abi);
+          await tokenContract.mock.transfer
+            .withArgs(vault.address, walletTo.address)
+            .returns(true);
+    
+    
+          await tokenContract.mock.balanceOf
+            .withArgs(vault.address)
+            .returns((true, 0x0000000000000000000000000000000000000000000000000000000000000005)); 
+    
+    
+          await walletTo.sendTransaction({
+            to: vault.address,
+            value: ethers.utils.parseEther("2"),
+          });
+        });
+    */
+  });
 });
+
+
+
+
+
