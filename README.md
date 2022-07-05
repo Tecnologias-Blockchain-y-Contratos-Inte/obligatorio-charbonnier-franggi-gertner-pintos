@@ -46,7 +46,7 @@ En esta carpeta están las pruebas unitarias para los contratos inteligentes def
 
 ### Scripts ([/scripts](/scripts))
 
-TODO: Completar porque vamos a tener solo 1 script que deploye todo.
+En esta carpeta esta el script utilizado para hacer el deploy de los 3 contratos.
 
 ## Pasos para hacer el Setup del repositorio
 
