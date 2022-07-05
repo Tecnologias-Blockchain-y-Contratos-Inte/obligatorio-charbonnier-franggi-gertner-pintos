@@ -337,4 +337,14 @@ contract Vault {
         }
         return true;
     }
+
+    function setAPR(uint256 _newAPR) external onlyAdmin returns (bool) {
+        bytes memory setAPRCall = abi.encodeWithSignature(
+            "setAPR(uint256)",
+            _newAPR
+        );
+        (bool _success, ) = farmContract.call(setAPRCall);
+        require(_success, "Vault::setAPR call has failed.");
+        return true;
+    }
 }

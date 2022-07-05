@@ -164,7 +164,7 @@ contract Farm {
         return balances[msg.sender].stake;
     }
 
-    function setAPR(uint256 newAPR) external onlyVault returns (bool) {
+    function setAPR(uint256 _newAPR) external onlyVault returns (bool) {
         uint256 newTimestamp = block.timestamp;
         for (uint256 i = 0; i < stakeholders.length; i++) {
             address stakeholder = stakeholders[i];
@@ -172,7 +172,7 @@ contract Farm {
 
             uint256 accumulatedWin = oldStake +
                 getYieldForTimestamp(newTimestamp, stakeholder);
-            uint256 income = (oldStake * newAPR) / 100;
+            uint256 income = (oldStake * _newAPR) / 100;
 
             uint256 newPersonalAPR = (income * 100) / accumulatedWin;
 
@@ -182,19 +182,19 @@ contract Farm {
 
             totalStake += accumulatedWin - oldStake;
         }
-        APR = newAPR;
+        APR = _newAPR;
         return true;
     }
 
-    function getYieldForTimestamp(uint256 _timestamp, address stakeholder)
+    function getYieldForTimestamp(uint256 _timestamp, address _stakeholder)
         private
         view
         returns (uint256)
     {
         // An year has 31556926 seconds, and we multiply this by 100 because of the APR, that is a percentage
-        uint256 yield = ((balances[stakeholder].stake *
-            balances[stakeholder].APR *
-            (_timestamp - balances[stakeholder].timestamp)) / 3155692600);
+        uint256 yield = ((balances[_stakeholder].stake *
+            balances[_stakeholder].APR *
+            (_timestamp - balances[_stakeholder].timestamp)) / 3155692600);
 
         return yield;
     }
