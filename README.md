@@ -7,6 +7,13 @@ Obligatorio 1er Semestre 2022 - Proyecto Plataforma de Staking
 El proyecto es una Plataforma de Staking, la cual contiene un token siguiendo el estándar ERC-20, un contrato que permite la compra y venta de
 dicho token entre los dueños de la plataforma y los usuarios, y un contrato Farm, encargado de brindar las funcionalidades vinculadas con el Sraking de dicho token.
 
+## Integrantes del equipo
+|      Nombre     | Nro. de Estudiante |             Address Registrada             |
+|:---------------:|:------------------:|:------------------------------------------:|
+|  Diego Franggi  |       210434       | 0xA947783b803D20032c12f58cdE0Dd20b73fE57dF |
+| Mathías Gertner |       193783       | 0x335bBEA03eb4773D71F56eA425cFD7AD79B89B86 |
+|   Bruno Pintos  |       214108       | 0x21176324dc254a413f195A1732055ee43AD9A7Bf |
+
 ## Componentes del proyecto
 
 ### Contratos inteligentes ([/contracts](/contracts))
@@ -45,16 +52,26 @@ TODO: Completar porque vamos a tener solo 1 script que deploye todo.
 
 Requisitos: Tener instalado Node.js, se puede descargar en este [link](https://nodejs.org/en/download/) (recomendamos la versión LTS)
 
-Crear el archivo .env acorde a la muestra brindada. Cambiar las variables por las apropiadas.
+Crear el archivo <em>.env</em> acorde a la muestra brindada ([.env.sample](.env.sample)). Cambiar las variables por las apropiadas.
 Abrir una terminal y correr el siguiente comando en el root del proyecto:
 ```
 npm install
 npx hardhat compile
 ```
 
-## Pasos para hacer el Deploy del proyecto
+## Pasos para hacer el Deploy en Rinkeby
 
-TODO: Completar.
+Requisitos: [Setup del repositorio](#pasos-para-hacer-el-setup-del-repositorio)
+
+1. Crear un nuevo proyecto en [Infura](https://infura.io/)
+2. Completar el <em>.env</em> con:
+    1. La url de Infura para la testnet Rinkeby.
+    2. La address de Rinkeby del signer que va a hacer el deploy.
+    3. La private key de la address mencionada.
+3. Correr el siguiente comando desde el root del proyecto:
+```
+npm run deploy-rinkeby
+```
 
 ## Pasos para hacer la ejecución de test del proyecto
 
@@ -67,11 +84,12 @@ npm test
 
 ## Address de contratos deployados en testnet
 
-TODO: Completar.
+|    Contrato   |             Address de Rinkeby             |
+|:-------------:|:------------------------------------------:|
+| TokenContract | 0xb8bFB7820143f91710AF3d71221943570e74E066 |
+|     Vault     | 0x377770f32a258bDe54AD47F1eF9D9a1f0A18c450 |
+|      Farm     | 0x471b5986fd89C16Fe50C2b74E19cCE5674A16826 |
 
-## Integrantes del equipo
-|      Nombre     | Nro. de Estudiante |             Address Registrada             |
-|:---------------:|:------------------:|:------------------------------------------:|
-|  Diego Franggi  |       210434       | 0xA947783b803D20032c12f58cdE0Dd20b73fE57dF |
-| Mathías Gertner |       193783       | 0x335bBEA03eb4773D71F56eA425cFD7AD79B89B86 |
-|   Bruno Pintos  |       214108       | 0x21176324dc254a413f195A1732055ee43AD9A7Bf |
+Todos los contratos fueron deployados con el siguiente signer:
+
+Signer address: `0xA947783b803D20032c12f58cdE0Dd20b73fE57dF`
