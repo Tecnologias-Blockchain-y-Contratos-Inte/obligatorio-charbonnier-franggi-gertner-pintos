@@ -109,16 +109,57 @@ describe("Farm", () => {
       farm = await deployContract(wallet, Farm, [
         tokenWallet.address,
         vaultWallet.address,
-        3155692600,
+        3155692600, // Set the APR high in order to wait few seconds and already have yield
       ]);
       await farm.stake(amount);
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait to have some yield
       // Act
       await farm.withdrawYield();
       // Assert
       expect(Number(await farm.totalYieldPaid())).to.be.greaterThanOrEqual(
         Number(60)
       );
+    });
+  });
+
+  describe("APR", () => {
+    it("Should be able to set new APR as vault", async () => {
+      // Arrange
+      const newAPR = 20;
+      const farmFromVaultContract = farm.connect(vaultWallet);
+      // Act
+      await farmFromVaultContract.setAPR(newAPR);
+      // Assert
+      expect(await farm.APR()).to.eq(newAPR);
+    });
+
+    it("Should not be able to set new APR as not vault", async () => {
+      // Arrange
+      const newAPR = 20;
+      // Assert
+      await expect(farm.setAPR(newAPR)).to.be.reverted;
+    });
+
+    it("Should be able to set new APR as vault and change stake values of stakeholders", async () => {
+      // Arrange
+      const newAPR = 31556926000;
+      const amount = 20;
+      farm = await deployContract(wallet, Farm, [
+        tokenWallet.address,
+        vaultWallet.address,
+        3155692600, // Set the APR high in order to wait few seconds and already have yield
+      ]);
+      const farmFromVaultContract = farm.connect(vaultWallet);
+      const tokenContract = await deployMockContract(wallet, TokenContract.abi);
+      await tokenContract.mock.transferFrom
+        .withArgs(wallet.address, farm.address, amount)
+        .returns(true);
+      await farm.stake(amount);
+      await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait to have some yield
+      // Act
+      await farmFromVaultContract.setAPR(newAPR);
+      // Assert
+      expect(await farm.getStake()).to.not.eq(amount);
     });
   });
 });

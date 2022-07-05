@@ -25,14 +25,17 @@ contract TokenContract {
     }
 
     modifier onlyAdmin() {
-        require(_msgSender() == owner, "Only the owner is able to set Vault");
+        require(
+            _msgSender() == owner,
+            "Only the owner is able to do this operation."
+        );
         _;
     }
 
     modifier onlyVault() {
         require(
             _msgSender() == vault,
-            "Only Vault is able to mint/burn tokens"
+            "Only Vault is able to do this operation."
         );
         _;
     }

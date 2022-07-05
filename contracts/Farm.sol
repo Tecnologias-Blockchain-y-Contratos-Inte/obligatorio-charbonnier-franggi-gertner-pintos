@@ -12,6 +12,7 @@ contract Farm {
     address public vault;
 
     mapping(address => FarmData) private balances;
+    address[] public stakeholders;
 
     uint256 public totalStake = 0; // total amount of tokens staked by all users at this time
     uint256 public totalYieldPaid = 0; // total amount of yield paid out for all users
@@ -21,6 +22,7 @@ contract Farm {
         uint256 stake;
         uint256 APR;
         uint256 timestamp;
+        uint256 index;
     }
 
     constructor(
@@ -31,6 +33,14 @@ contract Farm {
         tokenContract = _tokenContract;
         vault = _vault;
         APR = _APR;
+    }
+
+    modifier onlyVault() {
+        require(
+            msg.sender == vault,
+            "Only Vault is able to do this operation."
+        );
+        _;
     }
 
     function stake(uint256 _amount) external returns (bool) {
@@ -64,14 +74,20 @@ contract Farm {
             newStake = getNewStakeForTimestamp(newTimestamp, _amount, INCREASE);
             newAPR = (income * 100) / newStake;
 
-            return true;
+            balances[msg.sender].stake = newStake;
+            balances[msg.sender].APR = newAPR;
+        } else {
+            FarmData storage newFarmData = balances[msg.sender];
+
+            newFarmData.stake = newStake;
+            newFarmData.APR = newAPR;
+            newFarmData.index = stakeholders.length;
+
+            stakeholders.push(msg.sender);
         }
 
+        balances[msg.sender].timestamp = newTimestamp;
         totalStake += newStake - oldStake;
-        FarmData storage newFarmData = balances[msg.sender];
-        newFarmData.stake = newStake;
-        newFarmData.APR = newAPR;
-        newFarmData.timestamp = newTimestamp;
 
         return true;
     }
@@ -103,26 +119,27 @@ contract Farm {
 
         require(_success, "Something went wrong while unstaking");
 
+        totalStake -= oldStake - newStake;
         if (newStake > 0) {
             uint256 income = (balances[msg.sender].stake - _amount) *
                 balances[msg.sender].APR *
                 100;
             uint256 newAPR = (income * 100) / newStake;
+            balances[msg.sender].stake = newStake;
             balances[msg.sender].APR = newAPR;
+            balances[msg.sender].timestamp = newTimestamp;
         } else {
+            balances[msg.sender].stake = 0;
             balances[msg.sender].APR = 0;
+            balances[msg.sender].timestamp = 0;
+            removeFromStakeholders();
         }
-
-        totalStake -= oldStake - newStake;
-        balances[msg.sender].stake = newStake;
-        balances[msg.sender].timestamp = newTimestamp;
-
         return true;
     }
 
     function withdrawYield() external returns (bool) {
         uint256 newTimestamp = block.timestamp;
-        uint256 yield = getYieldForTimestamp(newTimestamp);
+        uint256 yield = getYieldForTimestamp(newTimestamp, msg.sender);
 
         bytes memory withdrawYieldVault = abi.encodeWithSignature(
             "withdrawYield(address, uint256)",
@@ -140,22 +157,44 @@ contract Farm {
     }
 
     function getYield() public view returns (uint256) {
-        return getYieldForTimestamp(block.timestamp);
+        return getYieldForTimestamp(block.timestamp, msg.sender);
     }
 
     function getStake() external view returns (uint256) {
         return balances[msg.sender].stake;
     }
 
-    function getYieldForTimestamp(uint256 _timestamp)
+    function setAPR(uint256 newAPR) external onlyVault returns (bool) {
+        uint256 newTimestamp = block.timestamp;
+        for (uint256 i = 0; i < stakeholders.length; i++) {
+            address stakeholder = stakeholders[i];
+            uint256 oldStake = balances[stakeholder].stake;
+
+            uint256 accumulatedWin = oldStake +
+                getYieldForTimestamp(newTimestamp, stakeholder);
+            uint256 income = (oldStake * newAPR) / 100;
+
+            uint256 newPersonalAPR = (income * 100) / accumulatedWin;
+
+            balances[stakeholder].stake = accumulatedWin;
+            balances[stakeholder].APR = newPersonalAPR;
+            balances[stakeholder].timestamp = newTimestamp;
+
+            totalStake += accumulatedWin - oldStake;
+        }
+        APR = newAPR;
+        return true;
+    }
+
+    function getYieldForTimestamp(uint256 _timestamp, address stakeholder)
         private
         view
         returns (uint256)
     {
         // An year has 31556926 seconds, and we multiply this by 100 because of the APR, that is a percentage
-        uint256 yield = ((balances[msg.sender].stake *
-            balances[msg.sender].APR *
-            (_timestamp - balances[msg.sender].timestamp)) / 3155692600);
+        uint256 yield = ((balances[stakeholder].stake *
+            balances[stakeholder].APR *
+            (_timestamp - balances[stakeholder].timestamp)) / 3155692600);
 
         return yield;
     }
@@ -165,7 +204,7 @@ contract Farm {
         uint256 _amount,
         uint256 _variation
     ) private view returns (uint256) {
-        uint256 yield = getYieldForTimestamp(_timestamp);
+        uint256 yield = getYieldForTimestamp(_timestamp, msg.sender);
         if (_variation == INCREASE) {
             return balances[msg.sender].stake + yield + _amount;
         } else if (_variation == DECREASE) {
@@ -173,5 +212,14 @@ contract Farm {
         } else {
             revert("Invalid variation");
         }
+    }
+
+    function removeFromStakeholders() private {
+        uint256 senderIndex = balances[msg.sender].index;
+        address lastAddress = stakeholders[stakeholders.length - 1];
+        stakeholders[senderIndex] = lastAddress;
+        balances[lastAddress].index = senderIndex;
+        balances[msg.sender].index = 0;
+        stakeholders.pop();
     }
 }
