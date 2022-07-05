@@ -2,6 +2,8 @@
 pragma solidity ^0.8.9;
 
 contract TokenContract {
+    uint256 public constant VERSION = 100;
+
     event Transfer(address indexed from, address indexed to, uint256 amount);
     event Approval(
         address indexed owner,

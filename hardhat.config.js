@@ -20,16 +20,16 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 module.exports = {
   solidity: "0.8.9",
   networks: {
-    // rinkeby: {
-    //   chainId: 4,
-    //   timeout: 20000,
-    //   gasPrice: 8000000000,
-    //   gas: "auto",
-    //   name: "Rinkeby",
-    //   url: process.env.RINKEBY_ACCESSPOINT_URL,
-    //   from: process.env.RINKEBY_ACCOUNT,
-    //   accounts: [process.env.RINKEBY_PRIVATE_KEY],
-    // },
+    rinkeby: {
+      chainId: 4,
+      timeout: 20000,
+      gasPrice: 8000000000,
+      gas: "auto",
+      name: "Rinkeby",
+      url: process.env.RINKEBY_URL,
+      from: process.env.RINKEBY_ACCOUNT,
+      accounts: [process.env.RINKEBY_PRIVATE_KEY],
+    },
     ganache: {
       chainId: 1337,
       timeout: 20000,

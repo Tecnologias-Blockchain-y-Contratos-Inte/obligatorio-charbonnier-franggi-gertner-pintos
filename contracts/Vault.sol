@@ -5,6 +5,7 @@ import "hardhat/console.sol";
 
 contract Vault {
     uint256 public constant VERSION = 100;
+
     uint256 public adminsThatHaveWithdrawnCount = 1;
     uint256 public mintingNumber = 1;
     uint256 public withdrawId = 1;
