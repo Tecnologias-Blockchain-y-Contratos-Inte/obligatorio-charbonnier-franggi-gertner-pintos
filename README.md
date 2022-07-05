@@ -57,8 +57,8 @@ npm test
 TODO: Completar.
 
 ## Integrantes del equipo
-| Nombre          | Nro. de Estudiante | Address Registrada                         |
-|-----------------|--------------------|--------------------------------------------|
-| Diego Franggi   | 210434             | 0xA947783b803D20032c12f58cdE0Dd20b73fE57dF |
-| Mathías Gertner | 193783             | 0x335bBEA03eb4773D71F56eA425cFD7AD79B89B86 |
-| Bruno Pintos    | 214108             | 0x21176324dc254a413f195A1732055ee43AD9A7Bf |
+|      Nombre     | Nro. de Estudiante |             Address Registrada             |
+|:---------------:|:------------------:|:------------------------------------------:|
+|  Diego Franggi  |       210434       | 0xA947783b803D20032c12f58cdE0Dd20b73fE57dF |
+| Mathías Gertner |       193783       | 0x335bBEA03eb4773D71F56eA425cFD7AD79B89B86 |
+|   Bruno Pintos  |       214108       | 0x21176324dc254a413f195A1732055ee43AD9A7Bf |
