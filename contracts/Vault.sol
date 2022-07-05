@@ -14,6 +14,7 @@ contract Vault {
     uint256 public sellPrice;
     uint256 public buyPrice;
     address public tokenContract;
+    address public farmContract;
     uint256 private adminsNeededForMultiSignature;
     uint256 private maxAmountToTransfer;
 
@@ -55,6 +56,14 @@ contract Vault {
         require(
             _number < 2**256 - 1,
             "The number must be less than 2**256 - 1."
+        );
+        _;
+    }
+
+    modifier onlyFarm() {
+        require(
+            msg.sender == farmContract,
+            "The sender address is not the Farm contract."
         );
         _;
     }
@@ -220,7 +229,12 @@ contract Vault {
         return number;
     }
 
-    function buyTokens() external payable {
+    function setMaxAmountToTransfer(uint256 _maxAmount) external onlyAdmin {
+        require(_maxAmount > 0, "The maximum amount must be greater than 0.");
+        maxAmountToTransfer = _maxAmount;
+    }
+
+    receive() external payable {
         require(msg.value >= sellPrice, "You must buy at least one token");
         bytes memory balanceCall = abi.encodeWithSignature(
             "balanceOf(address)",
@@ -254,16 +268,7 @@ contract Vault {
         require(_transferSuccess, "TokenContract::transfer call has failed.");
     }
 
-    function setMaxAmountToTransfer(uint256 _maxAmount) external onlyAdmin {
-        require(_maxAmount > 0, "The maximum amount must be greater than 0.");
-        maxAmountToTransfer = _maxAmount;
-    }
-
-    receive() external payable {
-        this.buyTokens();
-    }
-
-    function exchangeEther(uint256 _tokensAmount) external {
+    function exchangeEther(uint256 _tokensAmount) external returns (bool) {
         bytes memory balanceCall = abi.encodeWithSignature(
             "balanceOf(address)",
             msg.sender
@@ -298,5 +303,38 @@ contract Vault {
             "TokenContract::transferFrom call has failed. Have you authorized vault to use your tokens?"
         );
         payable(msg.sender).transfer(ethersToPay);
+
+        return true;
+    }
+
+    function setFarmContract(address _address) external onlyAdmin {
+        farmContract = _address;
+    }
+
+    function withdrawYield(address _receiver, uint256 _amount)
+        external
+        onlyFarm
+        returns (bool)
+    {
+        bytes memory transferCall = abi.encodeWithSignature(
+            "transfer(address, uint256)",
+            _receiver,
+            _amount
+        );
+        (bool _couldTransfer, ) = tokenContract.call(transferCall);
+        if (!_couldTransfer) {
+            bytes memory mintCall = abi.encodeWithSignature(
+                "mint(uint256)",
+                _amount
+            );
+            (bool _couldMint, ) = tokenContract.call(mintCall);
+            require(_couldMint, "TokenContract::mint call has failed.");
+            (bool _transferSuccess, ) = tokenContract.call(transferCall);
+            require(
+                _transferSuccess,
+                "TokenContract::transfer call has failed."
+            );
+        }
+        return true;
     }
 }
