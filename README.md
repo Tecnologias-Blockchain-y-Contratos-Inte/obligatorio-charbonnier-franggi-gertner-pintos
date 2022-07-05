@@ -13,14 +13,25 @@ dicho token entre los dueños de la plataforma y los usuarios, y un contrato Far
 
 En esta carpeta están todos los contratos inteligentes de la solución.
 
+![documentation](/documentation/Diagram.png)
+
+
 #### TokenContract ([TokenContract.sol](/contracts/TokenContract.sol))
 Este contrato representa el token ERC-20. Además de las funcionalidades brindadas por el estándar, tiene la capacidad de <em>mintear</em> y <em>burnear</em> tokens, siguiendo la lógica de negocio definida en la letra del obligatorio.
+
+![documentation](/documentation/TokenContract.png)
 
 #### Vault ([Vault.sol](/contracts/Vault.sol))
 Este contrato es el encargado de la administración del token ERC-20. Algunas de sus funcionalidades son indicarle a `TokenContract` que <em>mintee</em> y <em>burnee</em> tokens. Manejar la compra y venta del token con otros usuarios, definir los precios, y permitir a los administradores obtener las ganancias de la plataforma. A su vez, para la mayoría de las operaciones maneja un sistema de multifirma.
 
+![documentation](/documentation/Vault.PNG)
+
+
 #### Farm ([Farm.sol](/contracts/Farm.sol))
 Este contrato es el encargado de manejar el <em>staking</em> de la plataforma. Permite que los usuarios que presentan tokens puedan <em>stakear</em> y a través de un APR obtener una ganancia <em>"yield"</em>, la cual luego pueden retirar.
+
+![documentation](/documentation/Farm.PNG)
+
 
 ### Pruebas Unitarias ([/test](/test))
 
@@ -34,9 +45,11 @@ TODO: Completar porque vamos a tener solo 1 script que deploye todo.
 
 Requisitos: Tener instalado Node.js, se puede descargar en este [link](https://nodejs.org/en/download/) (recomendamos la versión LTS)
 
+Crear el archivo .env acorde a la muestra brindada. Cambiar las variables por las apropiadas.
 Abrir una terminal y correr el siguiente comando en el root del proyecto:
 ```
 npm install
+npx hardhat compile
 ```
 
 ## Pasos para hacer el Deploy del proyecto
