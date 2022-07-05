@@ -16,6 +16,7 @@ contract Vault {
     address public tokenContract;
     address public farmContract;
     uint256 private adminsNeededForMultiSignature;
+    uint256 private maxAmountToTransfer;
 
     mapping(address => bool) public admins;
     mapping(uint256 => mapping(address => bool)) public adminsThatHaveWithdrawn;
@@ -66,8 +67,6 @@ contract Vault {
         );
         _;
     }
-
-    receive() external payable {}
 
     function addAdmin(address _newAdmin) external onlyAdmin returns (bool) {
         admins[_newAdmin] = true;
@@ -217,6 +216,95 @@ contract Vault {
 
     function setTokenContract(address _address) external onlyAdmin {
         tokenContract = _address;
+    }
+
+    function bytesToUint(bytes memory b) public pure returns (uint256) {
+        uint256 number;
+        for (uint256 i = 0; i < b.length; i++) {
+            number =
+                number +
+                uint256(uint8(b[i])) *
+                (2**(8 * (b.length - (i + 1))));
+        }
+        return number;
+    }
+
+    function setMaxAmountToTransfer(uint256 _maxAmount) external onlyAdmin {
+        require(_maxAmount > 0, "The maximum amount must be greater than 0.");
+        maxAmountToTransfer = _maxAmount;
+    }
+
+    receive() external payable {
+        require(msg.value >= sellPrice, "You must buy at least one token");
+        bytes memory balanceCall = abi.encodeWithSignature(
+            "balanceOf(address)",
+            address(this)
+        );
+        (bool _balanceSuccess, bytes memory balance) = tokenContract.staticcall(
+            balanceCall
+        );
+        require(_balanceSuccess, "TokenContract::balance call has failed.");
+        uint256 vaultBalance = bytesToUint(balance);
+        require(
+            (vaultBalance > 0),
+            "Vault does not have any tokens available at the moment, please wait until the next mint!"
+        );
+
+        uint256 tokens = (msg.value / sellPrice);
+
+        if (vaultBalance < tokens) {
+            uint256 tokenDiff = tokens - vaultBalance;
+            payable(msg.sender).transfer(tokenDiff * sellPrice);
+            tokens = tokens - tokenDiff;
+        }
+
+        (bool _transferSuccess, ) = tokenContract.call(
+            abi.encodeWithSignature(
+                "transfer(address,uint256)",
+                msg.sender,
+                tokens
+            )
+        );
+        require(_transferSuccess, "TokenContract::transfer call has failed.");
+    }
+
+    function exchangeEther(uint256 _tokensAmount) external returns (bool) {
+        bytes memory balanceCall = abi.encodeWithSignature(
+            "balanceOf(address)",
+            msg.sender
+        );
+        (bool _balanceSuccess, bytes memory balance) = tokenContract.staticcall(
+            balanceCall
+        );
+        require(_balanceSuccess, "TokenContract::balance call has failed.");
+        uint256 userBalance = bytesToUint(balance);
+        require(userBalance >= _tokensAmount, "You dont have enough tokens");
+        uint256 ethersToPay = _tokensAmount * buyPrice;
+        require(
+            ethersToPay < maxAmountToTransfer,
+            "Vault can`t pay more than max amount"
+        );
+        require(
+            address(this).balance >= ethersToPay,
+            "We dont have enough money to pay you. Reverting transaction..."
+        );
+
+        (bool _transferSuccess, ) = tokenContract.call(
+            abi.encodeWithSignature(
+                "transferFrom(address,address,uint256)",
+                msg.sender,
+                address(this),
+                _tokensAmount
+            )
+        );
+
+        require(
+            _transferSuccess,
+            "TokenContract::transferFrom call has failed. Have you authorized vault to use your tokens?"
+        );
+        payable(msg.sender).transfer(ethersToPay);
+
+        return true;
     }
 
     function setFarmContract(address _address) external onlyAdmin {
