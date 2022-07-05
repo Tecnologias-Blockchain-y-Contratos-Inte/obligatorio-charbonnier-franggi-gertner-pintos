@@ -310,27 +310,5 @@ describe("Vault", () => {
         })
       ).to.be.reverted;
     });
-
-    /*
-        it("Should be able to buy tokens", async () => {
-          await vault.setSellPrice(ethers.utils.parseEther("2"));
-          await vault.setBuyPrice(ethers.utils.parseEther("1"));
-          const tokenContract = await deployMockContract(wallet, TokenContract.abi);
-          await tokenContract.mock.transfer
-            .withArgs(vault.address, walletTo.address)
-            .returns(true);
-    
-    
-          await tokenContract.mock.balanceOf
-            .withArgs(vault.address)
-            .returns((true, 0x0000000000000000000000000000000000000000000000000000000000000005)); 
-    
-    
-          await walletTo.sendTransaction({
-            to: vault.address,
-            value: ethers.utils.parseEther("2"),
-          });
-        });
-    */
   });
 });

@@ -247,7 +247,7 @@ contract Vault {
         uint256 vaultBalance = bytesToUint(balance);
         require(
             (vaultBalance > 0),
-            "Vault doesnt  have any tokens available at the moment, please wait until the next mint!"
+            "Vault does not have any tokens available at the moment, please wait until the next mint!"
         );
 
         uint256 tokens = (msg.value / sellPrice);
